@@ -5,7 +5,7 @@
 #' @param model_type The model type. Either `Crow-AMSAA` (default) or `Piecewise Weibull NHPP` with change point detection.
 #' @param breakpoints An optional vector of breakpoints for the `Piecewise Weibull NHPP` model.
 #' @param conf_level The desired confidence level, which defaults to 95%.
-#' @return The function returns a list of the results for the model, including the Weibull parameters if applicable.
+#' @return The function returns an object of class `rga` that contains the results for the model.
 #' @examples
 #' times <- c(100, 200, 300, 400, 500)
 #' failures <- c(1, 2, 1, 3, 2)
@@ -100,6 +100,10 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breakpoints = NULL, 
     lambdas <- exp(intercept)
   }
 
+  # Extract goodness of fit metrics
+  aic <- stats::AIC(updated_fit)
+  bic <- stats::BIC(updated_fit)
+
   # Generate the fitted values and confidence intervals
   fitted_values <- stats::predict(updated_fit)
   conf_intervals <- stats::predict(updated_fit, interval = "confidence", level = conf_level)
@@ -111,6 +115,8 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breakpoints = NULL, 
   result <- (
     list(
       model = updated_fit,
+      AIC = aic,
+      BIC = bic,
       breakpoints = breakpoints,
       fitted_values = exp(fitted_values),
       lower_bounds = lower_bounds,

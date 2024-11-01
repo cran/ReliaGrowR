@@ -9,6 +9,7 @@
 #' @param main Title for the plot (default: "Duane Plot with Cumulative MTBF").
 #' @return The function returns a list of the fitted linear model, Cumulative Time, Cumulative MTBF.
 #' @examples
+#' library(ReliaGrowR)
 #' times <- c(100, 200, 300, 400, 500)
 #' failures <- c(1, 2, 1, 3, 2)
 #' fit <- duane_plot(times, failures)
@@ -44,13 +45,16 @@ duane_plot <- function(times, failures,
 
   # Set up the plot with log-log scale
   plot(cum_time, cum_mtbf, log = "xy", pch = 16, col = point_col,
-       xlab = xlab, ylab = ylab,
-       main = main)
+       xlab = xlab, ylab = ylab, main = main)
 
   # Fit a linear model to the log-transformed data for the Duane plot
   log_cum_time <- log(cum_time)
   log_cum_mtbf <- log(cum_mtbf)
   fit <- stats::lm(log_cum_mtbf ~ log_cum_time)
+
+  # Extract goodness of fit metrics
+  aic <- stats::AIC(fit)
+  bic <- stats::BIC(fit)
 
   # Add the fitted line
   fitted_values <- exp(predict(fit))
@@ -62,8 +66,11 @@ duane_plot <- function(times, failures,
 
   result <- list(
     model = fit,
+    AIC = aic,
+    BIC = bic,
     Cumulative_Time = cum_time,
-    Cumulative_MTBF = cum_mtbf
+    Cumulative_MTBF = cum_mtbf,
+    Fitted_Values = fitted_values
   )
 
   class(result) <- "duane"  # Assign the custom S3 class
