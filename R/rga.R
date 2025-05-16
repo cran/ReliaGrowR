@@ -1,4 +1,10 @@
+
+
 #' Reliability Growth Analysis.
+#'
+#' This function performs reliability growth analysis using the Crow-AMSAA model by
+#' Crow (1975) <https://apps.dtic.mil/sti/citations/ADA020296> or piecewise Weibull
+#' NHPP model by Guo et al. (2010) <doi:10.1109/RAMS.2010.5448029>.
 #'
 #' @param times A vector of cumulative times at which failures occurred.
 #' @param failures A vector of the number of failures at each corresponding time in times.
@@ -14,7 +20,6 @@
 #' @importFrom stats lm predict
 #' @importFrom segmented segmented slope intercept
 #' @export
-
 rga <- function(times, failures, model_type = "Crow-AMSAA", breakpoints = NULL, conf_level = 0.95) {
 
   # Check if the inputs are valid
@@ -50,11 +55,12 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breakpoints = NULL, 
     }
   }
 
-  # Convert to cumulative failure times
+  # Convert to cumulative failure times and cumulative operating time
   cum_failures <- cumsum(failures)
+  cum_time <- cumsum(times)
 
   # Log-transform the data
-  log_times <- log(times)
+  log_times <- log(cum_time)
   log_cum_failures <- log(cum_failures)
 
   # Fit a linear model to the log-transformed data
@@ -68,7 +74,9 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breakpoints = NULL, 
         breakpoints <- updated_fit$psi[, "Est."]
       } else {
         # Apply the user-supplied breakpoints
-        segmented_fit <- segmented::segmented(fit, seg.Z = ~log_times, fixed.psi = log(breakpoints))
+        logbps <- log(breakpoints)
+        segmented_fit <- segmented::segmented(fit, seg.Z = ~log_times,
+                                              fixed.psi = logbps, npsi = length(logbps))
         # Update the model fit with the user-supplied breakpoints
         updated_fit <- segmented_fit
       }
@@ -79,7 +87,7 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breakpoints = NULL, 
 
       # Calculate Beta (slope) and Lambda (intercept) for each segment
       betas <- slopes
-      lambdas <- intercepts
+      lambdas <- exp(intercepts$log_times)
 
     } else {
       updated_fit <- fit
@@ -88,11 +96,11 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breakpoints = NULL, 
       # Calculate Weibull parameters for the Crow-AMSAA model
       summary <- summary(updated_fit)
       slope <- summary$coefficients[2,]
-      intercept <- summary$coefficients[2,]
+      intercept <- summary$coefficients[1,]
 
       # Calculate Beta and Lambda for the Crow-AMSAA model
       betas <- slope
-      lambdas <- intercept
+      lambdas <- exp(intercept)
     }
 
     # Extract goodness of fit metrics
@@ -126,18 +134,49 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breakpoints = NULL, 
     return(result)
   }
 
-# Custom print method for rga objects
+#' Print method for rga objects.
+#'
+#' This function prints a summary of the RGA analysis result.
+#' @param x An object of class `rga`.
+#' @param ... Additional arguments (not used).
+#' @export
 print.rga <- function(x, ...) {
-  cat("Reliability Growth Analysis (RGA) Results:\n")
-  cat("----------------------------------------------------\n")
-  cat("Model Type:        ", ifelse(is.null(x$breakpoints), "Crow-AMSAA", "Piecewise Weibull NHPP"), "\n")
+  cat("Reliability Growth Analysis (RGA)\n")
+  cat("---------------------------------\n")
+
+  # Determine model type
+  model_type <- if (is.null(x$breakpoints)) "Crow-AMSAA" else "Piecewise Weibull NHPP"
+  cat("Model Type:", model_type, "\n\n")
+
+  # Print breakpoints if available
   if (!is.null(x$breakpoints)) {
-    cat("Breakpoints:       ", paste(round(x$breakpoints, 2), collapse = ", "), "\n")
+    cat("Breakpoints (original scale):\n")
+    cat(round(exp(x$breakpoints), 4), "\n")
+    cat("\n")
   }
-  cat("Shape Parameters:  ", paste(round(x$shape_parameters, 2), collapse = ", "), "\n")
-  cat("Scale Parameters:  ", paste(round(x$scale_parameters, 2), collapse = ", "), "\n")
-  cat("Betas (slopes):    ", paste(round(x$betas, 2), collapse = ", "), "\n")
-  cat("Lambdas:           ", paste(round(x$lambdas, 2), collapse = ", "), "\n")
-  cat("----------------------------------------------------\n")
-  invisible(x)  # Ensure the object is returned invisibly
+
+  # Print Weibull parameters
+  cat("Weibull Parameters (per segment):\n")
+  if (model_type == "Piecewise Weibull NHPP") {
+    betas <- round(x$betas$log_times[, "Est."], 4)
+    cat(sprintf("  Betas: %s\n", paste(betas, collapse = ", ")))
+  } else {
+    cat(sprintf("  Beta: %.4f\n", x$betas[1]))
+  }
+
+  if (model_type == "Piecewise Weibull NHPP") {
+    lambdas <- round(x$lambdas[, "Est."], 4)
+    cat(sprintf("  Lambdas: %s\n", paste(lambdas, collapse = ", ")))
+  } else {
+    cat(sprintf("  Lambda: %.4f\n", x$lambdas[1]))
+  }
+
+  # Goodness of fit
+  cat("\nGoodness of Fit:\n")
+  cat(sprintf("  AIC: %.2f\n", x$AIC))
+  cat(sprintf("  BIC: %.2f\n", x$BIC))
+
+  invisible(x)
 }
+
+
