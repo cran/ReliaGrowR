@@ -7,10 +7,25 @@
 \method{print}{rga}(x, ...)
 }
 \arguments{
-\item{x}{An object of class \code{rga}.}
+\item{x}{An object of class \code{rga}, which contains the results from the RGA model.}
 
 \item{...}{Additional arguments (not used).}
 }
-\description{
-This function prints a summary of the RGA analysis result.
+\value{
+Invisibly returns the input object.
 }
+\description{
+Print method for rga objects.
+}
+\examples{
+times <- c(100, 200, 300, 400, 500)
+failures <- c(1, 2, 1, 3, 2)
+result <- rga(times, failures)
+print(result)
+}
+\seealso{
+Other Reliability Growth Analysis: 
+\code{\link{plot.rga}()},
+\code{\link{rga}()}
+}
+\concept{Reliability Growth Analysis}
