@@ -1,5 +1,13 @@
+# ReliaGrowR 0.3
+
+## Minor improvements and bug Fixes
+* More plotting options for RGA and Duane models.
+* More printing options for RGA and Duane models.
+* New vignette on reliability data management.
+* More documentation and examples.
+* Other minor improvements and bug fixes.
+
 # ReliaGrowR 0.2
-* Upcoming release with new features and improvements.
 
 ## Breaking Changes
 * `duane_plot` function has been renamed to `duane` function with a separate S3 method for plotting. 
