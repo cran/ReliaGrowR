@@ -1,4 +1,4 @@
-8de9ea2ed1b9edc8cddabc19466ba76b *DESCRIPTION
+126187bc8da7e7b6c85201148209a038 *DESCRIPTION
 e2dd9a7035515071ab2f55b87671eea0 *NAMESPACE
 9431d4b4e2b300ec58c02c32c3736e36 *NEWS.md
 df6cc46bc7fae1a55b713f3d5065b35a *R/ReliaGrowR-package.R
@@ -8,7 +8,7 @@ cc9ad2c3f214bd54f6f8903f04f2fc79 *R/gof.R
 f15322d16ac7b230da008247dc4e6217 *R/rdt.R
 2fa22e47f928d964b799278533e3f563 *R/rga.R
 faf48efc5ffa5b40d0050ec3ca48355d *R/srr-stats-standards.R
-193dd6144ae703a1a7d21db5296b2c1d *R/testdata.r
+9c8f3c8a53882c59d958935f86e1c2af *R/testdata.r
 c45b7aca976a0d1e92cccd093d2fc2fd *R/weibull_to_rga.R
 5d0698d840267e5921ec0f518b626798 *README.md
 76161b65639451c966be75488458b3c3 *build/partial.rdb
@@ -46,15 +46,15 @@ d822595d0327b987438899c8e9aea851 *man/print.rga.Rd
 b4091721a1261424a83393525990df0d *man/qqplot.rga.Rd
 0b95ee59374e3040574c80f629374bd7 *man/rdt.Rd
 95e776cfc8cf61aa1e15a99cf9826683 *man/rga.Rd
-feecad1776a23d316dffd375d69b790f *man/testdata.Rd
+e39a9344a1850853a4d673baea5665dd *man/testdata.Rd
 60f2d9308b02a006e784f347f3cdb5df *man/weibull_to_rga.Rd
 50f330eeca8db092d6807e04457bd06d *tests/spelling.R
 f63ba02e014e1d8cdc8214d56f668bf0 *tests/testthat.R
-d434587dad3355e95c60edc00c8bde18 *tests/testthat/Rplots.pdf
+b5f86b533a300f14655a4a910d6959d0 *tests/testthat/Rplots.pdf
 5347db6342fd7d85d8a1511500b2b162 *tests/testthat/_snaps/srr-rga/crow-amsaa-plot.svg
-f13ed673951fbd028006b2da4c438f96 *tests/testthat/test-srr-duane.R
+90837ad2ac15c452170140ba29fe2d96 *tests/testthat/test-srr-duane.R
 dd359425ddffd51801ef8678e7adb0a4 *tests/testthat/test-srr-gof.R
-09e563c1a653f30df539eac4892fde61 *tests/testthat/test-srr-rga.R
+10820e3bbad9f0f92b35f9602c9eaea4 *tests/testthat/test-srr-rga.R
 3a7eb31f2b2a9166805f7b057c75117d *tests/testthat/test-srr-testdata.R
 911021014fc356edfafbb2938b82c582 *tests/testthat/test-srr-weibull_to_rga.R
 40fd9b77eb2c54b796eaed2c49488486 *tests/testthat/test-srr_rdt.R
