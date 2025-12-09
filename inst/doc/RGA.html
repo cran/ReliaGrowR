@@ -386,7 +386,7 @@ failure counts, and generates a plot of cumulative MTBF vs cumulative
 time with the fitted model.</p>
 <p>First, load the package:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(ReliaGrowR)</span></code></pre></div>
-<p>Next, set up some cumulative time and failure data:</p>
+<p>Next, set up some time and failure data:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">100</span>, <span class="dv">200</span>, <span class="dv">300</span>, <span class="dv">400</span>, <span class="dv">500</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>failures <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>)</span></code></pre></div>
 <p>Then run the rga and plot the results:</p>
@@ -423,7 +423,7 @@ phase <span class="math inline">\(i\)</span>, and <span class="math inline">\(\b
 <div id="example-1" class="section level3">
 <h3>Example</h3>
 <p>To use the Piecewise NHPP model in ReliaGrowR, first, set up some
-cumulative time and failure data and specify a breakpoint:</p>
+time and failure data and specify a breakpoint:</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">25</span>, <span class="dv">55</span>, <span class="dv">97</span>, <span class="dv">146</span>, <span class="dv">201</span>, <span class="dv">268</span>, <span class="dv">341</span>, <span class="dv">423</span>, <span class="dv">513</span>, <span class="dv">609</span>, <span class="dv">710</span>, <span class="dv">820</span>, <span class="dv">940</span>, <span class="dv">1072</span>, <span class="dv">1217</span>)</span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>failures <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">3</span>, <span class="dv">4</span>)</span>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>breaks <span class="ot">&lt;-</span> <span class="dv">500</span></span></code></pre></div>
@@ -449,7 +449,7 @@ precise segmentation of the model into different distributions.</p>
 use the <code>rga</code> function with the model type set to “Piecewise
 NHPP” and breaks set to NULL. The function will automatically detect
 change points based on the provided failure data. First, set up some
-cumulative time and failure data:</p>
+time and failure data:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">25</span>, <span class="dv">55</span>, <span class="dv">97</span>, <span class="dv">146</span>, <span class="dv">201</span>, <span class="dv">268</span>, <span class="dv">341</span>, <span class="dv">423</span>, <span class="dv">513</span>, <span class="dv">609</span>, <span class="dv">710</span>, <span class="dv">820</span>, <span class="dv">940</span>, <span class="dv">1072</span>, <span class="dv">1217</span>)</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>failures <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">3</span>, <span class="dv">4</span>)</span></code></pre></div>
 <p>Then run the rga and plot the results:</p>
@@ -480,7 +480,7 @@ of failure counts, and generates a log-log plot of cumulative MTBF vs
 cumulative time.</p>
 <div id="example-3" class="section level3">
 <h3>Example</h3>
-<p>First, set up some cumulative time and failure data:</p>
+<p>First, set up some time and failure data:</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">100</span>, <span class="dv">200</span>, <span class="dv">300</span>, <span class="dv">400</span>, <span class="dv">500</span>)</span>
 <span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>failures <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>)</span></code></pre></div>
 <p>Then fit the model and plot the results:</p>
