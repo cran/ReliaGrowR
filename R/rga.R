@@ -1,3 +1,82 @@
+# Internal MLE helper for Crow-AMSAA (NHPP power-law) grouped-data likelihood.
+# Arguments:
+#   cum_time   : numeric vector of cumulative times (cumsum of interval times)
+#   failures   : numeric vector of failure counts per interval
+#   conf_level : numeric scalar in (0,1)
+# Returns a named list of estimates, standard errors, fitted values, CIs,
+# residuals, and information criteria.
+.fit_mle_crow <- function(cum_time, failures, conf_level) {
+  N <- sum(failures)
+  T_max <- max(cum_time)
+  n_obs <- length(failures)
+  t_prev <- c(0, cum_time[-n_obs])
+
+  neg_loglik <- function(par) {
+    beta <- par[1]
+    lambda <- par[2]
+    if (beta <= 0 || lambda <= 0) {
+      return(Inf)
+    }
+    delta_t <- cum_time^beta - t_prev^beta
+    if (any(delta_t <= 0)) {
+      return(Inf)
+    }
+    ll <- N * log(lambda) + sum(failures * log(delta_t)) - lambda * T_max^beta
+    -ll
+  }
+
+  opt <- stats::optim(
+    par = c(1, N / T_max),
+    fn = neg_loglik,
+    method = "L-BFGS-B",
+    lower = c(1e-6, 1e-10),
+    hessian = TRUE
+  )
+
+  beta_hat <- opt$par[1]
+  lambda_hat <- opt$par[2]
+  loglik <- -opt$value
+
+  vcov_mat <- tryCatch(solve(opt$hessian), error = function(e) matrix(NA_real_, 2, 2))
+  beta_se <- if (!anyNA(vcov_mat)) sqrt(max(vcov_mat[1, 1], 0)) else NA_real_
+
+  fitted_values <- lambda_hat * cum_time^beta_hat
+
+  z_val <- stats::qnorm(1 - (1 - conf_level) / 2)
+  log_fit <- log(fitted_values)
+  grad_mat <- cbind(log(cum_time), 1 / lambda_hat)
+  var_lf <- rowSums((grad_mat %*% vcov_mat) * grad_mat)
+  hw <- z_val * sqrt(pmax(var_lf, 0))
+
+  list(
+    beta          = beta_hat,
+    lambda        = lambda_hat,
+    betas_se      = beta_se,
+    vcov          = vcov_mat,
+    fitted_values = fitted_values,
+    lower_bounds  = exp(log_fit - hw),
+    upper_bounds  = exp(log_fit + hw),
+    loglik        = loglik,
+    residuals     = cumsum(failures) - fitted_values,
+    aic           = -2 * loglik + 4,
+    bic           = -2 * loglik + 2 * log(n_obs)
+  )
+}
+
+.compute_rga_cum_times <- function(times, times_type) {
+  if (identical(times_type, "failure_times")) {
+    return(cumsum(times))
+  }
+
+  if (any(diff(times) <= 0)) {
+    stop(
+      "When 'times_type = \"cumulative_failure_times\"', 'times' must be strictly increasing."
+    )
+  }
+
+  times
+}
+
 #' Reliability Growth Analysis.
 #'
 #' This function performs reliability growth analysis using the Crow-AMSAA model by
@@ -93,20 +172,29 @@
 #' @srrstats {RE7.3} Unit tests demonstrate expected behavior when `rga` object
 #' is submitted to the accessor methods `print` and `plot`.
 #'
-#' @param times Either a numeric vector of exact failure times or a data frame
-#' containing both failure times and failure counts. If a data frame is provided, it must
-#' contain two columns: `times` and `failures`. The `times` column contains exact failure times,
-#' and the `failures` column contains the number of failures at each corresponding time.
+#' @param times Either a numeric vector of failure-time inputs or a data frame
+#' containing both time inputs and failure counts. If `times_type = "failure_times"`
+#' (default), `times` is treated exactly as in previous versions of the function
+#' and is cumulatively summed inside `rga()`. If
+#' `times_type = "cumulative_failure_times"`, `times` is treated as already
+#' cumulative and is used directly without applying `cumsum()`. If a data frame
+#' is provided, it must contain two columns: `times` and `failures`.
 #' @param failures A numeric vector of the number of failures at each corresponding time
 #' in times. Must be the same length as `times` if both are vectors. All values must be
 #' positive and finite. Ignored if `times` is a data frame.
+#' @param times_type Character scalar indicating how to interpret `times`.
+#'   `"failure_times"` (default) preserves the current behavior and cumulatively
+#'   sums `times` inside `rga()`. `"cumulative_failure_times"` treats `times`
+#'   as already cumulative and skips that internal `cumsum()`.
 #' @param model_type The model type. Either `Crow-AMSAA` (default) or `Piecewise NHPP` with change point detection.
 #' @param breaks An optional vector of breakpoints for the `Piecewise NHPP` model.
 #' @param conf_level The desired confidence level, which defaults to 95%. The confidence
 #' level is the probability that the confidence interval contains the true mean response.
 #' @family Reliability Growth Analysis
 #' @return The function returns an object of class `rga` that contains:
-#' \item{times}{The input exact failure times.}
+#' \item{times}{The input time vector, stored exactly as supplied.}
+#' \item{cum_times}{The cumulative time vector used for fitting.}
+#' \item{times_type}{How `times` was interpreted: `"failure_times"` or `"cumulative_failure_times"`.}
 #' \item{failures}{The input number of failures.}
 #' \item{n_obs}{The number of observations (failures).}
 #' \item{cum_failures}{Cumulative failures.}
@@ -148,18 +236,25 @@
 #' result2 <- rga(df)
 #' print(result2)
 #'
+#' cum_times <- cumsum(times)
+#' result2b <- rga(cum_times, failures, times_type = "cumulative_failure_times")
+#' print(result2b)
+#'
 #' result3 <- rga(times, failures, model_type = "Piecewise NHPP")
 #' print(result3)
 #'
 #' result4 <- rga(times, failures, model_type = "Piecewise NHPP", breaks = c(450))
 #' print(result4)
-#' @importFrom stats lm predict AIC BIC logLik cor residuals
+#' @param method Estimation method: \code{"LS"} (default) for least-squares
+#'   log-log regression, or \code{"MLE"} for maximum likelihood estimation of
+#'   the Crow-AMSAA model. \code{"MLE"} is not supported for
+#'   \code{model_type = "Piecewise NHPP"}.
+#' @importFrom stats lm predict AIC BIC logLik cor residuals optim qnorm
 #' @importFrom segmented segmented slope intercept seg.control
 #' @export
-
-
-
-rga <- function(times, failures, model_type = "Crow-AMSAA", breaks = NULL, conf_level = 0.95) {
+rga <- function(times, failures, times_type = c("failure_times", "cumulative_failure_times"),
+                model_type = "Crow-AMSAA", breaks = NULL,
+                conf_level = 0.95, method = c("LS", "MLE")) {
   if (is.data.frame(times)) {
     if (!all(c("times", "failures") %in% names(times))) {
       stop("If a data frame is provided, it must contain columns 'times' and 'failures'.")
@@ -193,6 +288,8 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breaks = NULL, conf_
     stop("All values in 'failures' must be finite and > 0.")
   }
 
+  times_type <- match.arg(times_type)
+
   if (!is.character(model_type) || length(model_type) != 1) {
     stop("'model_type' must be a single character string.")
   }
@@ -220,9 +317,14 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breaks = NULL, conf_
     stop("'conf_level' must be between 0 and 1 (exclusive).")
   }
 
+  method <- match.arg(method)
+  if (method == "MLE" && valid_model == "piecewise nhpp") {
+    stop("'method = \"MLE\"' is not supported for model_type = \"Piecewise NHPP\". Use method = \"LS\".")
+  }
+
   # Data prep
   cum_failures <- cumsum(failures)
-  cum_time <- cumsum(times)
+  cum_time <- .compute_rga_cum_times(times, times_type)
   log_times <- log(cum_time)
   log_cum_failures <- log(cum_failures)
 
@@ -231,6 +333,36 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breaks = NULL, conf_
   if (is.na(cor_val) || abs(cor_val - 1) < .Machine$double.eps^0.5 ||
     abs(cor_val + 1) < .Machine$double.eps^0.5) {
     stop("Perfect collinearity detected between predictor ('log_times') and response ('log_cum_failures'). Regression cannot be performed.")
+  }
+
+  # MLE early return
+  if (method == "MLE") {
+    mle <- .fit_mle_crow(cum_time, failures, conf_level)
+    result <- list(
+      times         = times,
+      cum_times     = cum_time,
+      times_type    = times_type,
+      failures      = failures,
+      n_obs         = length(failures),
+      cum_failures  = cum_failures,
+      model         = NULL,
+      residuals     = mle$residuals,
+      logLik        = mle$loglik,
+      AIC           = mle$aic,
+      BIC           = mle$bic,
+      breakpoints   = NULL,
+      fitted_values = mle$fitted_values,
+      lower_bounds  = mle$lower_bounds,
+      upper_bounds  = mle$upper_bounds,
+      growth_rate   = 1 - mle$beta,
+      betas         = mle$beta,
+      betas_se      = mle$betas_se,
+      lambdas       = mle$lambda,
+      method        = "MLE",
+      vcov          = mle$vcov
+    )
+    class(result) <- "rga"
+    return(result)
   }
 
   # Fit initial Crow-AMSAA model
@@ -282,6 +414,8 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breaks = NULL, conf_
   # Return object
   result <- list(
     times = times,
+    cum_times = cum_time,
+    times_type = times_type,
     failures = failures,
     n_obs = length(failures),
     cum_failures = cum_failures,
@@ -297,7 +431,9 @@ rga <- function(times, failures, model_type = "Crow-AMSAA", breaks = NULL, conf_
     growth_rate = growth_rates,
     betas = betas,
     betas_se = beta_se,
-    lambdas = lambdas
+    lambdas = lambdas,
+    method = "LS",
+    vcov = NULL
   )
   class(result) <- "rga"
   return(result)
@@ -378,7 +514,9 @@ print.rga <- function(x, ...) {
   cat("---------------------------------\n")
 
   model_type <- if (is.null(x$breakpoints)) "Crow-AMSAA" else "Piecewise NHPP"
-  cat("Model Type:", model_type, "\n\n")
+  cat("Model Type:", model_type, "\n")
+  est_method <- if (!is.null(x$method)) x$method else "LS"
+  cat("Estimation Method:", est_method, "\n\n")
 
   if (!is.null(x$breakpoints)) {
     cat("Breakpoints (original scale):\n")
@@ -508,12 +646,19 @@ plot.rga <- function(x,
     stop("'legend_pos' must be a single character string.")
   }
 
-  if (!all(c("log_times", "log_cum_failures") %in% names(x$model$model))) {
-    stop("The 'rga' object appears malformed or missing model data.")
+  if (!is.null(x$cum_times) && !is.null(x$cum_failures)) {
+    times <- x$cum_times
+    cum_failures <- x$cum_failures
+  } else if (!is.null(x$method) && x$method == "MLE") {
+    times <- cumsum(x$times)
+    cum_failures <- cumsum(x$failures)
+  } else {
+    if (!all(c("log_times", "log_cum_failures") %in% names(x$model$model))) {
+      stop("The 'rga' object appears malformed or missing model data.")
+    }
+    times <- exp(x$model$model$log_times)
+    cum_failures <- exp(x$model$model$log_cum_failures)
   }
-
-  times <- exp(x$model$model$log_times)
-  cum_failures <- exp(x$model$model$log_cum_failures)
 
   # Base plot
   plot_args <- list(
@@ -569,6 +714,295 @@ plot.rga <- function(x,
       pch = legend_items$pch,
       lty = legend_items$lty,
       bty = "n"
+    )
+  }
+
+  invisible(NULL)
+}
+
+#' Forecast Cumulative Failures from a Reliability Growth Model
+#'
+#' Takes a fitted \code{rga} object and a vector of cumulative times, returning
+#' predicted cumulative failures with confidence bounds as an \code{rga_predict}
+#' S3 object.
+#'
+#' @srrstats {G1.4} \code{roxygen2} documentation is used to document all functions.
+#' @srrstats {G2.0} Inputs are validated for length.
+#' @srrstats {G2.1} Inputs are validated for type.
+#' @srrstats {G2.6} One-dimensional inputs are appropriately pre-processed.
+#' @srrstats {G2.8} Sub-functions \code{print.rga_predict} and
+#'   \code{plot.rga_predict} are provided for the \code{rga_predict} class.
+#' @srrstats {G2.13} The function checks for missing data and errors if any is found.
+#' @srrstats {G2.14a} Missing data results in an error.
+#' @srrstats {G2.14b} Missing data results in an error.
+#' @srrstats {G2.14c} Missing data results in an error.
+#' @srrstats {G2.15} The function checks for missing data and errors if any is found.
+#' @srrstats {G5.2} Unit tests demonstrate error messages and compare results
+#'   with expected values.
+#' @srrstats {G5.2a} Every message produced by \code{stop()} is unique.
+#' @srrstats {G5.2b} Unit tests demonstrate error messages and compare results
+#'   with expected values.
+#' @srrstats {G5.4} Unit tests include correctness tests to test that statistical
+#'   algorithms produce expected results to fixed test data sets.
+#' @srrstats {G5.8a} Unit tests include checks for zero-length data.
+#' @srrstats {G5.8b} Unit tests include checks for unsupported data types.
+#' @srrstats {G5.8c} Unit tests include checks for data with 'NA' fields.
+#' @srrstats {G5.8d} Unit tests include checks for data outside the scope of
+#'   the algorithm.
+#' @srrstats {G5.9} Unit tests include noise susceptibility tests for expected
+#'   stochastic behavior.
+#' @srrstats {G5.9a} Unit tests check that adding trivial noise to data does
+#'   not meaningfully change results.
+#'
+#' @param object An object of class \code{rga} returned by \code{rga()}.
+#' @param times A numeric vector of cumulative times at which to forecast.
+#'   All values must be finite and > 0. A warning is issued if any value is
+#'   at or below the maximum observed cumulative time (hindcasting).
+#' @param conf_level The desired confidence level (default \code{0.95}). Must
+#'   be a single finite numeric in (0, 1).
+#' @family Reliability Growth Analysis
+#' @return An object of class \code{rga_predict} containing:
+#' \item{times}{The forecast cumulative times.}
+#' \item{cum_failures}{Predicted cumulative failures.}
+#' \item{lower_bounds}{Lower confidence bounds.}
+#' \item{upper_bounds}{Upper confidence bounds.}
+#' \item{conf_level}{The confidence level used.}
+#' \item{model_type}{Either \code{"Crow-AMSAA"} or \code{"Piecewise NHPP"}.}
+#' \item{rga_object}{The original \code{rga} object (used by the plot method).}
+#' @examples
+#' times <- c(100, 200, 300, 400, 500)
+#' failures <- c(1, 2, 1, 3, 2)
+#' fit <- rga(times, failures)
+#' fc <- predict_rga(fit, times = c(1500, 2000))
+#' print(fc)
+#' @export
+predict_rga <- function(object, times, conf_level = 0.95) {
+  if (!inherits(object, "rga")) {
+    stop("'object' must be an object of class 'rga'.")
+  }
+  if (!is.numeric(times) || !is.vector(times)) {
+    stop("'times' must be a numeric vector.")
+  }
+  if (length(times) == 0) {
+    stop("'times' cannot be empty.")
+  }
+  if (any(is.na(times)) || any(is.nan(times))) {
+    stop("'times' contains missing (NA) or NaN values.")
+  }
+  if (any(!is.finite(times)) || any(times <= 0)) {
+    stop("All values in 'times' must be finite and > 0.")
+  }
+  if (!is.numeric(conf_level) || length(conf_level) != 1) {
+    stop("'conf_level' must be a single numeric value.")
+  }
+  if (!is.finite(conf_level) || conf_level <= 0 || conf_level >= 1) {
+    stop("'conf_level' must be between 0 and 1 (exclusive).")
+  }
+
+  if (!is.null(object$cum_times)) {
+    max_obs_time <- max(object$cum_times)
+  } else if (!is.null(object$model)) {
+    max_obs_time <- max(exp(object$model$model$log_times))
+  } else {
+    max_obs_time <- max(cumsum(object$times))
+  }
+  if (any(times <= max_obs_time)) {
+    warning(
+      "Some 'times' values are <= the maximum observed cumulative time. ",
+      "Hindcasting is allowed but may not be meaningful."
+    )
+  }
+
+  model_type <- if (is.null(object$breakpoints)) "Crow-AMSAA" else "Piecewise NHPP"
+
+  if (!is.null(object$method) && object$method == "MLE") {
+    cum_failures <- object$lambdas * times^object$betas
+    log_fitted <- log(cum_failures)
+    z_val <- stats::qnorm(1 - (1 - conf_level) / 2)
+    grad_mat <- cbind(log(times), 1 / object$lambdas)
+    var_lf <- rowSums((grad_mat %*% object$vcov) * grad_mat)
+    hw <- z_val * sqrt(pmax(var_lf, 0))
+    lower_bounds <- exp(log_fitted - hw)
+    upper_bounds <- exp(log_fitted + hw)
+  } else {
+    newdata <- data.frame(log_times = log(times))
+    pred <- stats::predict(object$model,
+      newdata = newdata,
+      interval = "confidence", level = conf_level
+    )
+    cum_failures <- exp(pred[, "fit"])
+    lower_bounds <- exp(pred[, "lwr"])
+    upper_bounds <- exp(pred[, "upr"])
+  }
+
+  result <- list(
+    times        = times,
+    cum_failures = cum_failures,
+    lower_bounds = lower_bounds,
+    upper_bounds = upper_bounds,
+    conf_level   = conf_level,
+    model_type   = model_type,
+    rga_object   = object
+  )
+  class(result) <- "rga_predict"
+  result
+}
+
+#' Print Method for rga_predict Objects
+#'
+#' Prints a formatted table of forecast cumulative failures with confidence
+#' bounds for an \code{rga_predict} object.
+#'
+#' @srrstats {G1.4} \code{roxygen2} documentation is used to document all functions.
+#' @srrstats {G2.8} This method is provided for the \code{rga_predict} class.
+#' @srrstats {G5.2} Unit tests demonstrate output content.
+#' @srrstats {G5.2b} Unit tests compare output with expected values.
+#'
+#' @param x An object of class \code{rga_predict}.
+#' @param ... Additional arguments (not used).
+#' @family Reliability Growth Analysis
+#' @return Invisibly returns the input object.
+#' @examples
+#' times <- c(100, 200, 300, 400, 500)
+#' failures <- c(1, 2, 1, 3, 2)
+#' fit <- rga(times, failures)
+#' fc <- predict_rga(fit, times = c(1500, 2000))
+#' print(fc)
+#' @export
+print.rga_predict <- function(x, ...) {
+  if (!inherits(x, "rga_predict")) {
+    stop("'x' must be an object of class 'rga_predict'.")
+  }
+
+  pct <- round(x$conf_level * 100)
+  header <- sprintf("Reliability Growth Forecast (%s)", x$model_type)
+  cat(header, "\n")
+  cat(paste(rep("-", nchar(header) + 1), collapse = ""), "\n")
+
+  df <- data.frame(
+    Time           = x$times,
+    Cum.Failures   = round(x$cum_failures, 1),
+    Lower          = round(x$lower_bounds, 1),
+    Upper          = round(x$upper_bounds, 1),
+    check.names    = FALSE
+  )
+  names(df)[3] <- sprintf("Lower (%d%%)", pct)
+  names(df)[4] <- sprintf("Upper (%d%%)", pct)
+
+  print(df, row.names = FALSE)
+
+  invisible(x)
+}
+
+#' Plot Method for rga_predict Objects
+#'
+#' Plots observed data, the fitted reliability growth curve, and the forecast
+#' with optional confidence bounds for an \code{rga_predict} object.
+#'
+#' @srrstats {G1.4} \code{roxygen2} documentation is used to document all functions.
+#' @srrstats {G2.0} Inputs are validated for length.
+#' @srrstats {G2.1} Inputs are validated for type.
+#' @srrstats {G2.8} This method is provided for the \code{rga_predict} class.
+#' @srrstats {G5.2} Unit tests include smoke tests for this method.
+#'
+#' @param x An object of class \code{rga_predict}.
+#' @param conf_bounds Logical; include confidence bounds (default: \code{TRUE}).
+#' @param legend Logical; show the legend (default: \code{TRUE}).
+#' @param legend_pos Position of the legend (default: \code{"bottomright"}).
+#' @param ... Additional arguments passed to \code{plot()}.
+#' @family Reliability Growth Analysis
+#' @return Invisibly returns \code{NULL}.
+#' @examples
+#' times <- c(100, 200, 300, 400, 500)
+#' failures <- c(1, 2, 1, 3, 2)
+#' fit <- rga(times, failures)
+#' fc <- predict_rga(fit, times = c(1500, 2000))
+#' plot(fc, main = "RGA Forecast", xlab = "Cumulative Time", ylab = "Cumulative Failures")
+#' @export
+plot.rga_predict <- function(x,
+                             conf_bounds = TRUE,
+                             legend = TRUE,
+                             legend_pos = "bottomright",
+                             ...) {
+  if (!inherits(x, "rga_predict")) {
+    stop("'x' must be an object of class 'rga_predict'.")
+  }
+  if (!is.logical(conf_bounds) || length(conf_bounds) != 1) {
+    stop("'conf_bounds' must be a single logical value.")
+  }
+  if (!is.logical(legend) || length(legend) != 1) {
+    stop("'legend' must be a single logical value.")
+  }
+  if (!is.character(legend_pos) || length(legend_pos) != 1) {
+    stop("'legend_pos' must be a single character string.")
+  }
+
+  rga_obj <- x$rga_object
+  if (!is.null(rga_obj$cum_times) && !is.null(rga_obj$cum_failures)) {
+    obs_times <- rga_obj$cum_times
+    obs_cum_failures <- rga_obj$cum_failures
+  } else if (!is.null(rga_obj$method) && rga_obj$method == "MLE") {
+    obs_times <- cumsum(rga_obj$times)
+    obs_cum_failures <- cumsum(rga_obj$failures)
+  } else {
+    obs_times <- exp(rga_obj$model$model$log_times)
+    obs_cum_failures <- exp(rga_obj$model$model$log_cum_failures)
+  }
+
+  all_y <- c(obs_cum_failures, rga_obj$fitted_values, x$cum_failures)
+  if (conf_bounds) {
+    all_y <- c(
+      all_y, rga_obj$lower_bounds, rga_obj$upper_bounds,
+      x$lower_bounds, x$upper_bounds
+    )
+  }
+  xlim <- range(c(obs_times, x$times))
+  ylim <- range(all_y)
+
+  graphics::plot(obs_times, obs_cum_failures,
+    xlim = xlim, ylim = ylim, pch = 16, ...
+  )
+
+  graphics::lines(obs_times, rga_obj$fitted_values)
+
+  if (conf_bounds) {
+    graphics::lines(obs_times, rga_obj$lower_bounds, lty = 3)
+    graphics::lines(obs_times, rga_obj$upper_bounds, lty = 3)
+  }
+
+  max_obs_time <- max(obs_times)
+  graphics::abline(v = max_obs_time, lty = 2, col = "gray")
+
+  graphics::lines(x$times, x$cum_failures, lty = 2)
+
+  if (conf_bounds) {
+    graphics::lines(x$times, x$lower_bounds, lty = 3)
+    graphics::lines(x$times, x$upper_bounds, lty = 3)
+  }
+
+  if (legend) {
+    pct <- round(x$conf_level * 100)
+    legend_labels <- c("Observed", "Fitted", "Forecast")
+    legend_pch <- c(16, NA, NA)
+    legend_lty <- c(NA, 1, 2)
+    legend_cols <- c("black", "black", "black")
+
+    if (conf_bounds) {
+      legend_labels <- c(legend_labels, sprintf("Conf. Bounds (%d%%)", pct))
+      legend_pch <- c(legend_pch, NA)
+      legend_lty <- c(legend_lty, 3)
+      legend_cols <- c(legend_cols, "black")
+    }
+
+    graphics::legend(legend_pos,
+      legend = legend_labels,
+      pch = legend_pch,
+      lty = legend_lty,
+      col = legend_cols,
+      bty = "n",
+      cex = 0.85,
+      y.intersp = 1.3,
+      x.intersp = 0.8
     )
   }
 
