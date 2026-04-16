@@ -1,10 +1,10 @@
 Package: ReliaGrowR
-Title: Reliability Growth Analysis
-Version: 0.4
+Title: Reliability Growth Analysis and Repairable Systems Modeling
+Version: 0.6
 Authors@R: person("Paul", "Govan", email = "paul.govan2@gmail.com", 
   role = c("aut", "cre", "cph"), comment = c(ORCID = "0000-0002-1821-8492"))
-Description: Modeling and plotting functions for Reliability Growth Analysis (RGA). Models include the Duane (1962) <doi:10.1109/TA.1964.4319640>, Non-Homogeneous Poisson Process (NHPP) by Crow (1975) (No. AMSAATR138), Piecewise Weibull NHPP by Guo et al. (2010) <doi:10.1109/RAMS.2010.5448029>, and Piecewise Weibull NHPP with Change Point Detection based on the 'segmented' package by Muggeo (2024) <https://cran.r-project.org/package=segmented>.
-Imports: graphics, plumber, segmented, stats
+Description: Modeling and plotting functions for Reliability Growth Analysis (RGA) and Non-Homogeneous Poisson Process (NHPP) models for repairable systems. RGA models include the Duane (1962) <doi:10.1109/TA.1964.4319640>, NHPP by Crow (1975) (No. AMSAATR138), Piecewise Weibull NHPP by Guo et al. (2010) <doi:10.1109/RAMS.2010.5448029>, and Piecewise Weibull NHPP with Change Point Detection based on the 'segmented' package by Muggeo (2024) <https://cran.r-project.org/package=segmented>. Repairable systems functions include the Mean Cumulative Function (MCF) using the Nelson-Aalen estimator, parametric Power Law and Log-Linear NHPP models, and forecasting.
+Imports: graphics, grDevices, plumber, segmented, stats
 License: CC BY 4.0
 Encoding: UTF-8
 Suggests: ellmer, knitr, pkgload, rmarkdown, spelling, testthat (>=
@@ -19,9 +19,9 @@ RoxygenNote: 7.3.3
 Depends: R (>= 3.5)
 LazyData: true
 NeedsCompilation: no
-Packaged: 2026-03-31 14:02:01 UTC; paulgovan
+Packaged: 2026-04-16 00:02:37 UTC; paulgovan
 Author: Paul Govan [aut, cre, cph] (ORCID:
     <https://orcid.org/0000-0002-1821-8492>)
 Maintainer: Paul Govan <paul.govan2@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-03-31 14:30:02 UTC
+Date/Publication: 2026-04-16 07:22:17 UTC
