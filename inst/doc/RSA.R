@@ -73,44 +73,40 @@ event <- c(  1,   1,   0,  1,   1,   0,   1,   1,   1)
 result <- exposure(id, time, event)
 
 ## -----------------------------------------------------------------------------
-time  <- c(200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000)
-event <- c(  3,   5,   4,   7,    6,    8,    5,    9,    7,   10)
+id   <- c(1, 1, 1, 2, 2, 2, 3, 3, 3, 3)
+time <- c(100, 350, 500, 80, 300, 600, 150, 250, 400, 700)
+m <- mcf(id, time)
 
 ## -----------------------------------------------------------------------------
-fit_mle <- nhpp(time, event, method = "MLE")
+fit_mle <- nhpp(m)
 plot(fit_mle, main = "Power Law NHPP (MLE)",
-     xlab = "Cumulative Time", ylab = "Cumulative Events")
+     xlab = "Time")
 
 ## -----------------------------------------------------------------------------
-fit_ls <- nhpp(time, event, method = "LS")
+fit_ls <- nhpp(m, method = "LS")
 
 ## -----------------------------------------------------------------------------
-result_ll <- nhpp(time, event, model_type = "Log-Linear")
-plot(result_ll, main = "Log-Linear NHPP",
-     xlab = "Cumulative Time", ylab = "Cumulative Events")
+fit_ll <- nhpp(m, model_type = "Log-Linear")
+plot(fit_ll, main = "Log-Linear NHPP",
+     xlab = "Time")
 
 ## -----------------------------------------------------------------------------
-time  <- c(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,
-           1100, 1200, 1300, 1400, 1500)
-event <- c(  1,   1,   2,   4,   4,   1,   1,   2,   1,    4,
-             1,   1,   3,   3,   4)
+id2   <- c(1,1,1,1,1, 2,2,2,2,2, 3,3,3,3,3)
+time2 <- c(100,200,300,400,500, 80,200,350,450,600, 150,250,400,550,700)
 
-result_pw <- nhpp(time, event, breaks = c(500), method = "LS")
-plot(result_pw, main = "Piecewise Power Law NHPP",
-     xlab = "Cumulative Time", ylab = "Cumulative Events")
+m2 <- mcf(id2, time2)
+fit_pw <- nhpp(m2, breaks = c(350), method = "LS")
+plot(fit_pw, main = "Piecewise Power Law NHPP",
+     xlab = "Time")
 
 ## -----------------------------------------------------------------------------
-time  <- c(200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000)
-event <- c(  3,   5,   4,   7,    6,    8,    5,    9,    7,   10)
-
-fit <- nhpp(time, event, method = "MLE")
-fc <- predict_nhpp(fit, time = c(2001, 2500, 3000, 4000, 5000))
+fc <- predict_nhpp(fit_mle, time = c(800, 1000, 1500))
+print(fc)
 
 ## -----------------------------------------------------------------------------
 plot(fc, main = "NHPP Forecast",
-     xlab = "Cumulative Time", ylab = "Cumulative Events")
+     xlab = "Time")
 
 ## -----------------------------------------------------------------------------
-fit_ll <- nhpp(time, event, model_type = "Log-Linear")
-fc_ll <- predict_nhpp(fit_ll, time = c(2500, 3000))
+fc_ll <- predict_nhpp(fit_ll, time = c(800, 1000))
 
