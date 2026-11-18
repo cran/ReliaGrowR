@@ -463,11 +463,11 @@ right-censored times, and interval-censored times:</p>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">weibull_to_rga</span>(failures, right_censored, interval_starts, interval_ends)</span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="fu">head</span>(result)</span>
 <span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt;   CumulativeTime Failures</span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt; 1            100        1</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; 2            265        1</span></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; 3            465        2</span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt; 6           1225        1</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt; 8           1975        1</span></span></code></pre></div>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt; 1            900        1</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; 2           1420        1</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; 3           1665        2</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt; 6           2155        1</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt; 8           2375        1</span></span></code></pre></div>
 <p>The resulting data frame contains cumulative times and failure
 counts, which can then be passed directly to the <code>rga</code>
 function for reliability growth analysis.</p>
